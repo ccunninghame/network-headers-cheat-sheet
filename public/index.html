@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Headers</title>
+    <style>
+        html {
+            --nibbleSize: 135px;
+            --hexColor: #e0dcdc;
+            --fieldFontSize: 0.9rem;
+        }
+
+        .byte {
+            grid-row: 1 / 2;
+            display: grid; grid-template-columns: repeat(2, 1fr);
+            border-bottom: solid;
+        }
+        .byte-count {
+            grid-column: 2 / 3; grid-row: 1 / 2;
+            position: relative; justify-self: right; margin-right: 4px;
+        }
+
+        .nibble {
+            grid-row: 1 / 2;
+            display: grid; grid-template-columns: repeat(4, 1fr);
+            height: calc(var(--nibbleSize)); width: calc(var(--nibbleSize));
+        }
+        .nibble-high {
+            grid-column: 1 / 2;
+        }
+        .nibble-low {
+            grid-column: 2 / 3;
+        }
+        .nibble-value {
+            grid-column: 1 / span 4; grid-row: 1 / 2;
+            position: relative; justify-self: center; align-self: center;
+            font-family: consolas; line-height: 0%;
+            color: var(--hexColor); font-size: calc(var(--fieldFontSize) + 7rem);
+            z-index: -1;
+        }
+
+        .bit {
+            grid-row: 1 / 2;
+            display: grid; grid-template-rows: 95% 5%;
+        }
+        .bit::after {
+            content: "";
+            grid-row: 2 / 3;
+            border-top: solid; border-right: solid; border-width: 1px;
+        }
+        .bit-1 {
+            grid-column: 1 / 2;
+        }
+        .bit-2 {
+            grid-column: 2 / 3;
+        }
+        .bit-3 {
+            grid-column: 3 / 4;
+        }
+        .bit-4 {
+            grid-column: 4 / 5;
+        }
+
+        .field-data {
+            position: absolute; margin-left: 2px;
+        }
+        .field-title {
+            font-weight: bold;
+            font-size: var(--fieldFontSize);
+        }
+        .field-title-sup {
+            font-size: var(--fieldFontSize);
+        }
+        .field-size {
+            text-decoration: underline;
+            font-size: calc(var(--fieldFontSize) - 0.1rem);
+        }
+        .field-options {
+            font-size: calc(var(--fieldFontSize) - 0.2rem);
+        }
+
+
+        .close-left-hard {
+            border-left: solid; border-color: black;
+        }
+
+        .close-left-soft {
+            border-left: solid; border-color: var(--hexColor);
+        }
+
+        .segment-left-hard {
+            border-left: dashed; border-color: black;
+        }
+        .segment-left-soft {
+            border-left: dashed; border-color: var(--hexColor);
+        }
+
+
+        .close-right-soft {
+            border-right: solid; border-color: var(--hexColor);
+        }
+        .close-right-hard {
+            border-right: solid; border-color: black;
+        }
+
+        /**/
+        /* body {
+            font-family: arial;
+        } */
+        .content {
+            max-width: calc(var(--nibbleSize) * 8);
+            margin: 0 auto;
+        }
+
+        .header-container {
+            margin-bottom: 32px;
+        }
+
+        .header {
+            margin-bottom: 10px;
+            font-family: arial;
+        }
+        .header-title {
+            font-weight: bold;
+        }
+        .header-bytes {
+            display: flex; flex-wrap: wrap;
+            border-top: solid;
+        }
+        @media (min-width: 826px) and (max-width: 1080px) {
+            .header-bytes {
+                width: calc(var(--nibbleSize) * 6);
+            }
+        }
+        @media (min-width: 556px) and (max-width: 824px) {
+            .header-bytes {
+                width: calc(var(--nibbleSize) * 4);
+            }
+        }
+        @media (max-width: 554px) {
+            .header-bytes {
+                width: calc(var(--nibbleSize) * 2);
+            }
+        }
+
+
+        /**/
+        .table {
+            width: 40%;
+            border-right: 1px solid; border-bottom: 1px solid;
+        }
+        .table-header {
+            font-weight: bold;
+        }
+        .table div {
+            border-left: 1px solid; border-top: 1px solid;
+            padding-left: 0.1rem;
+        }
+        .table div.table-open {
+            border-top: none;
+        }
+
+        .table-4col {
+            display: grid; grid-template-columns: auto auto auto auto;
+        }
+        .table-3col {
+            display: grid; grid-template-columns: auto auto auto;
+        }
+
+    </style>
+</head>
+<body>
+    <noscript>This page requires JavaScript!</noscript>
+    <div id="header-template" hidden>
+        <div class="header">
+            <span class="header-title"></span><span class="header-title-sup"></span>
+            <div class="header-info"></div>
+            <div class="header-bytes"></div>
+        </div>
+    </div>
+    <div id="nibble-template" hidden>
+        <div class="nibble">
+            <div class="nibble-value"></div>
+            <div class="bit bit-1"></div>
+            <div class="bit bit-2"></div>
+            <div class="bit bit-3"></div>
+            <div class="bit bit-4"></div>
+        </div> 
+    </div>
+    <div id="field-template" hidden>
+        <div class="field-data">
+            <span class="field-title"></span><span class="field-title-sup"></span>
+            <div class="field-size"></div>
+            <div class="field-options"></div>
+        </div>
+    </div>
+
+    <div id="content" class="content">
+        <div id="ethernet" class="header-container"></div>
+        <div id="arp" class="header-container"></div>
+        <div id="icmp" class="header-container">
+            <div class="table table-4col">
+                <div class="table-header">Type</div><div class="table-header">Code</div><div class="table-header">Type Name</div><div class="table-header">Code Name</div>
+                <div>0x00</div><div>0x00</div><div>Echo Reply</div><div>N/A</div>
+                <div>0x03</div><div>0x00</div><div>Destination Unreachable</div><div>Network Unreachable</div>
+                <div>0x03</div><div>0x01</div><div>Destination Unreachable</div><div>Host Unreachable</div>
+                <div>0x03</div><div>0x02</div><div>Destination Unreachable</div><div>Protocol Unreachable</div>
+                <div>0x03</div><div>0x03</div><div>Destination Unreachable</div><div>Port Unreachable</div>
+                <div>0x08</div><div>0x00</div><div>Echo Request</div><div>N/A</div>
+                <div>0x11</div><div>0x00</div><div>Time Exceeded</div><div>TTL Exceeded</div>
+                <div>0x13</div><div>0x00</div><div>Timestamp</div><div>N/A</div>
+                <div>0x15</div><div>0x00</div><div>Information Request</div><div>N/A</div>
+                <div>0x17</div><div>0x00</div><div>Address Mask Request</div><div>N/A</div>
+            </div>
+        </div>
+        <div id="icmpv6" class="header-container">
+            <div class="table table-4col">
+                <div class="table-header">Type</div><div class="table-header">Code</div><div></div><div></div>
+                <div class="table-header">Value</div><div class="table-header">Meaning</div><div class="table-header">Value</div><div class="table-header">Meaning</div>
+                <div>1</div><div>Destination Unreachable</div><div>0</div><div>No route to destination</div>
+                <div class="table-open"></div><div class="table-open"></div><div>1</div><div>Communication w/ destination administratively prohibited</div>
+                <div class="table-open"></div><div class="table-open"></div><div>3</div><div>Address unreachable</div>
+                <div class="table-open"></div><div class="table-open"></div><div>4</div><div>Port unreachable</div>
+                <div>2</div><div>Packet too big</div><div>0</div><div></div>
+                <div>3</div><div>Time exceeded</div><div>0</div><div>Hop limit exceeded in transit</div>
+                <div class="table-open"></div><div class="table-open"></div><div>1</div><div>Fragment reassembly time exceeded</div>
+                <div>128</div><div>Echo Request</div><div>0</div><div></div>
+                <div>129</div><div>Echo Reply</div><div>0</div><div></div>
+                <div>133</div><div>Router Solicitation (NDP)</div><div>0</div><div></div>
+                <div>134</div><div>Router Advertisement (NDP)</div><div>0</div><div></div>
+                <div>135</div><div>Neighbor Solicitation (NDP)</div><div>0</div><div></div>
+                <div>136</div><div>Neighbor Advertisement (NDP)</div><div>0</div><div></div>
+                <div>137</div><div>Redirect Message (NDP)</div><div>0</div><div></div>
+            </div>
+        </div>
+        <div id="ipv4" class="header-container"></div>
+        <div id="ipv6" class="header-container"></div>
+        <div id="tcp" class="header-container">
+            <div class="table table-3col">
+                <div class="table-header">Common Service Ports</div><div></div><div></div>
+                <div>20/21</div><div>0x0014/15</div><div>FTP</div>
+                <div>22</div><div>0x0016</div><div>SSH</div>
+                <div>23</div><div>0x0017</div><div>Telnet</div>
+                <div>25</div><div>0x0019</div><div>SMTP</div>
+                <div>53</div><div>0x0035</div><div>DNS</div>
+                <div>80</div><div>0x0050</div><div>HTTP</div>
+                <div>135</div><div>0x0087</div><div>TPM</div>
+                <div>139</div><div>0x008B</div><div>NetBIOS</div>
+                <div>443</div><div>0x01BB</div><div>SSL/TLS</div>
+                <div>445</div><div>0x01BD</div><div>SMB</div>
+                <div>853</div><div>0x0355</div><div>DNS/TLS</div>
+            </div>
+        </div>
+        <div id="udp" class="header-container">
+            <div class="table table-3col">
+                <div class="table-header">Common Service Ports</div><div></div><div></div>
+                <div>9</div><div>0x0009</div><div>WOL</div>
+                <div>53</div><div>0x0035</div><div>DNS</div>
+                <div>67/68</div><div>0x0043/44</div><div>DHCP</div>
+                <div>69</div><div>0x0045</div><div>TFTP</div>
+                <div>80</div><div>0x0050</div><div>HTTP</div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        class Header {
+            constructor(title, titleSupplement, info, hex, fields) {
+                this.title = title
+                this.titleSupplement = titleSupplement
+                this.info = info
+                this.hex = hex
+                this.fields = fields
+            }
+        }
+        class Field {
+            constructor(title, titleSupplement, size, content) {
+                this.title = title
+                this.titleSupplement = titleSupplement
+                this.size = size
+                this.content = content
+            }
+        }
+        const content = document.getElementById("content");
+
+        const ethernet = new Header("Ethernet II Frame (Header/Footer)", "14 bytes, 3 fields (4 if VLAN is present)",
+            "Preamble/SOF(Start of Frame Delimeter) [(7/1) 8 bytes] is stripped off by ethernet hardware. CRC/FCS(Frame Check Sequence) [4 bytes] usually isn't captured as well. Vlan [4 bytes] inserted between the source and ether type. Frame length min: 64 bytes, max: 1518 bytes {header: [14] + Variable length payload: [46 up to 1500] + CRC: [4]}.",
+            "ffffffffffff00006510221b0806",
+            {
+                0:  new Field("Destination MAC Address", "", "6 bytes", ""),
+                48: new Field("Source MAC Address",      "", "6 bytes", ""),
+                96: new Field("Ether Type/Size",         "", "2 bytes", "0x0800 = IPv4\n0x0806 = ARP\n0x86dd = IPv6")
+            }
+        )
+        const arp = new Header("ARP", "28 bytes, 9 fields",
+            "",
+            "000108000604000100006510221b0a0100010000000000000a010002",
+            {
+                0:   new Field("Hardware Type",                 "", "2 bytes", ""),
+                16:  new Field("Protocol Type",                 "", "2 bytes", ""),
+                32:  new Field("Hardware Address Length (HAL)", "", "1 byte", ""),
+                40:  new Field("Protocol Address Length (PAL)", "", "1 byte", ""),
+                48:  new Field("Opcode",                        "", "2 bytes", ""),
+                64:  new Field("Sender Hardware Address",       "", "6 bytes", ""),
+                112: new Field("Sender Protocol Address",       "", "4 bytes", ""),
+                144: new Field("Target Hardware Address",       "", "6 bytes", ""),
+                192: new Field("Target Protocol Address",       "", "4 bytes", ""),
+            }
+        )
+        const icmp = new Header("ICMP", "4 bytes, 3 fields",
+            "Options are available as an additional 4 byte field.",
+            "03033a8b",
+            {
+                0:  new Field("Type",     "", "1 byte", ""),
+                8:  new Field("Code",     "", "1 byte", ""),
+                16: new Field("Checksum", "", "2 bytes", "")
+            }
+        )
+        const icmpv6 = new Header("ICMPv6", "4 bytes, 3 fields",
+            "Allows up to 1276 additional bytes based on the type & code and may include extension headers. MTU 1280 bytes.",
+            "870034b0",
+            {
+                0:  new Field("Type",     "", "1 byte", ""),
+                8:  new Field("Code",     "", "1 byte", ""),
+                16: new Field("Checksum", "", "2 bytes", "")
+            }
+        )
+        const ipv4 = new Header("IPv4", "min 20 bytes, max 60 bytes, 12 fields (13 if IP options are present)",
+            "IP datagram size - max: 2^16 - 1 (65,535). IP packet length - IP header, transport header, and data when present.",
+            "4500010706e6400080066ee2c0a801d7c0a80101        ",
+            {
+                0:   new Field("Version",                "",      "4 bits", "4 = IPv4\n6 = IPv6"),
+                4:   new Field("IHL",                    " (*4)", "4 bits", ""),
+                8:   new Field("Type of Service (TOS)",  "",      "1 byte", ""),
+                16:  new Field("Total Length",           "",      "2 bytes", ""),
+                32:  new Field("ID",                     "",      "2 bytes", ""),
+                48:  new Field("IP Flag",                "",      "3 bits", "0 = no frags\n2 = more frags\n4 = do not frag"),
+                51:  new Field("Fragment Offset",        " (*8)", "13 bits", ""),
+                64:  new Field("Time To Live (TTL)",     "",      "1 byte", ""),
+                72:  new Field("Protocol",               "",      "1 byte", "0x01 = ICMP\n0x04 = IP\n0x06 = TCP\n0x11 = UDP"),
+                80:  new Field("Header Checksum",        "",      "2 bytes", ""),
+                96:  new Field("Soure IP Address",       "",      "4 bytes", ""),
+                128: new Field("Destination IP Address", "",      "4 bytes", ""),
+                160: new Field("IP Options", " (IHL > 20 bytes)", "0-40 bytes", "")
+            }
+        )
+        const ipv6 = new Header("IPv6", "40 bytes, 8 fields",
+            "",
+            "6000000000671101fe8[]183ff0[]002",
+            {
+                0:  new Field("Version",             "",                "4 bits", ""),
+                4:  new Field("Traffic Class",       "",                "1 byte", ""),
+                12: new Field("Flow Label",          "",                "20 bits", ""),
+                32: new Field("Payload Lengt",       "",                "2 bytes", ""),
+                48: new Field("Next Header",         "",                "1 byte", "0x01 = ICMP\n0x06 = TCP\n0x11 = UDP\n0x29 = IPv6\n0x3a = ICMPv6"),
+                56: new Field("Hop Limit",           "",                "1 byte", ""),
+                64: new Field("Source Address",      " (consolidated)", "16 bytes", ""),
+                96: new Field("Destination Address", " (consolidated)", "16 bytes", "")
+            }
+        )
+        ipv6.consolidated = {9: 12, 13: 12}
+        const tcp = new Header("TCP", "min 20 bytes, more if TCP options are used, 9 fields",
+            "",
+            "05400050db67c368036fb9895018fc006ae00000",
+            {
+                0:   new Field("Source Port",            "",      "2 bytes", ""),
+                16:  new Field("Destination Port",       "",      "2 bytes", ""),
+                32:  new Field("Sequence Number",        "",      "4 bytes", ""),
+                64:  new Field("Acknowledgement Number", "",      "4 bytes", ""),
+                96:  new Field("Data Offset",            " (*4)", "4 bits", ""),
+                100: new Field("Reserved",               "",      "4 bits", ""),
+                104: new Field("Flags",                  "",      "1 byte", "\n C\n0x80"),
+                  105: new Field("\n",                   "",      "\n", "\n E\n0x40"),
+                  106: new Field("\n",                   "",      "\n", "\n U\n0x20"),
+                  107: new Field("\n",                   "",      "\n", "\n A\n0x10"),
+                  108: new Field("\n",                   "",      "\n", "\n P\n0x08"),
+                  109: new Field("\n",                   "",      "\n", "\n R\n0x04"),
+                  110: new Field("\n",                   "",      "\n", "\n S\n0x02"),
+                  111: new Field("\n",                   "",      "\n", "\n F\n0x01"),
+                112: new Field("Window Size",            "",      "2 bytes", ""),
+                128: new Field("Checksum",               "",      "2 bytes", ""),
+                144: new Field("Urgent Pointer",         "",      "2 bytes", "")
+            }
+        )
+        const udp = new Header("UDP", "8 bytes, 4 fields",
+            "Checksum is optional in IPv4. Checksum is required in IPv6.",
+            "0035059300390cf7",
+            {
+                0: new Field("Source Port",       "", "2 bytes", ""),
+                16: new Field("Destination Port", "", "2 bytes", ""),
+                32: new Field("Length",           "", "2 bytes", ""),
+                48: new Field("Checksum",         "", "2 bytes", "")
+            }
+        )
+
+        const headerTemplate = document.getElementById("header-template").children[0].cloneNode(true);
+        const nibbleTemplate = document.getElementById("nibble-template").children[0].cloneNode(true);
+        const fieldTemplate = document.getElementById("field-template").children[0].cloneNode(true);
+
+
+        window.addEventListener("load", function(){
+            document.getElementById("ethernet").prepend(makeHeader(ethernet));
+            document.getElementById("arp").prepend(makeHeader(arp));
+            document.getElementById("icmp").prepend(makeHeader(icmp));
+            document.getElementById("icmpv6").prepend(makeHeader(icmpv6));
+            document.getElementById("ipv4").prepend(makeHeader(ipv4));
+            document.getElementById("ipv6").prepend(makeHeader(ipv6));
+            document.getElementById("tcp").prepend(makeHeader(tcp));
+            document.getElementById("udp").prepend(makeHeader(udp));
+        });
+
+        function makeHeader(data) {
+            let header = headerTemplate.cloneNode(true);
+            header.children[0].innerText = data.title;
+            header.children[1].innerText = " - " + data.titleSupplement;
+            header.children[2].innerText = data.info;
+            bytesEl = header.children[3]
+
+
+            console.log("Bits: " + data.hex.length * 4);
+            console.log("Nibbles: " + data.hex.length);
+            console.log("Bytes: " + data.hex.length / 2);
+            console.log("Octets: " + Math.ceil(data.hex.length / 8));
+
+
+            let bits = 0;// Count of bits looped over.
+            // Create all of the bites in the header.
+            let consolidatedAmmount = 0;//The number of bits that are not being displayed.
+            for (b=0; b < data.hex.length / 2; b++) {              
+                // Create a byte.
+                let byte = document.createElement("div");
+                byte.classList.add("byte");
+                bytesEl.appendChild(byte);
+                let count = document.createElement("div");
+                count.classList.add("byte-count");
+                count.innerText = bits/8 + consolidatedAmmount;
+                byte.appendChild(count);
+
+                // Create a high order nibble.
+                let highNibble = makeNibble(data.hex.substring((bits/4), (bits/4)+1), bits, data.fields);
+                highNibble.classList.add("nibble-high");
+                byte.appendChild(highNibble);
+                bits+=4;
+
+                hex = data.hex.substring((bits/4), (bits/4)+1);// Get the character for this nibble.
+                // Check if the hex is consolidated.
+                if (hex === "[") {
+                    // Add to the consolidated ammount so that the byte counts will display correctly.
+                    consolidatedAmmount += data.consolidated[bits/8 -0.5];
+                }
+
+                // Create a low order nibble.
+                let lowNibble = makeNibble(hex, bits, data.fields);
+                lowNibble.classList.add("nibble-low");
+                byte.appendChild(lowNibble);
+                bits+=4;
+
+                // Hard close the last bit if it is the end of the header.
+                if ((bits/4) === data.hex.length) {
+                    lowNibble.children[4].classList.add("close-right-hard");
+                }
+            }
+            return header;
+        }
+
+        /*
+          start: the bit the nibble starts at.
+        */
+        function makeNibble(hexVal, start, fields) {
+            let end = start+4;// The bit the nibble ends at.
+            let nibEl = nibbleTemplate.cloneNode(true);
+            nibEl.children[0].innerText = hexVal;
+
+            // The nibble is low if modulousing by 8 is greater than 4 or equals 0.
+            let high = !((start+1) % 8 >4 || (start+1) % 8 === 0);
+
+            // Soft close the first bit if this ia a high nibble, soft segment if low nibble.
+            nibEl.children[1].classList.add(high ? "close-left-soft" : "segment-left-soft");
+
+            // Check each bit to see if a field starts there.
+            for (let bits=start; bits<end; bits++) {
+                let bitEl = nibEl.children[bits-end+5];
+                // Check if a field starts at this bit.
+                if (fields.hasOwnProperty(bits)) {   
+                    addFieldData(bitEl, fields[bits]);
+                    // Remove the default and hard close/segment since this is the start of a new field.
+                    bitEl.classList.remove(high ? "close-left-soft" : "segment-left-soft");
+                    // HIGH: Hard close the bit if it is the first in the nibble. Hard segment otherwise. LOW: Always hard segment.
+                    bitEl.classList.add( (high && bits == start) ? "close-left-hard" : "segment-left-hard");
+                }
+                // Soft close the last bit if it is the end of an octet.
+                if ((bits+1)%32 == 0) {
+                    bitEl.classList.add("close-right-soft");
+                }
+            }
+            return nibEl;
+        }
+
+        function addFieldData(bit, data) {
+            let field = fieldTemplate.cloneNode(true);
+            bit.appendChild(field);
+            field.children[0].innerText = data.title;
+            field.children[1].innerText = data.titleSupplement;
+            field.children[2].innerText =  data.size;
+            field.children[3].innerText =  data.content;
+        }
+    </script>
+</body>
+</html>
